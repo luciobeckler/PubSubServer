@@ -14,7 +14,7 @@ async function getHazardousAsteroids() {
         const response = await axios.get(url);
         const nearEarthObjects = response.data.near_earth_objects;
 
-        const hazardousAsteroids = [];
+        let hazardousAsteroids = [];
 
         // Verifica cada objeto em potencial por data
         for (const date in nearEarthObjects) {
@@ -27,7 +27,7 @@ async function getHazardousAsteroids() {
                         name: asteroid.name,
                         size: asteroid.estimated_diameter.kilometers.estimated_diameter_max,
                         approach_date: asteroid.close_approach_data[0].close_approach_date,
-                        miss_distance: asteroid.close_approach_data[0].miss_distance.kilometers,
+                        miss_distance: parseFloat(asteroid.close_approach_data[0].miss_distance.kilometers), // Convertendo para float
                         velocity: asteroid.close_approach_data[0].relative_velocity.kilometers_per_hour,
                     });
                 }
@@ -58,9 +58,7 @@ function publishToRabbitMQ(message) {
             const queue = 'hazardous_meteors';
 
             // Assegura que a fila existe
-            channel.assertQueue(queue, {
-                durable: false
-            });
+            channel.assertQueue(queue, { durable: false });
 
             // Publica a mensagem na fila
             channel.sendToQueue(queue, Buffer.from(message));
@@ -81,10 +79,14 @@ async function monitorAsteroids() {
     const hazardousAsteroids = await getHazardousAsteroids();
 
     if (hazardousAsteroids.length > 0) {
-        hazardousAsteroids.forEach(asteroid => {
-            const message = JSON.stringify(asteroid);
-            publishToRabbitMQ(message);  // Publica a mensagem no RabbitMQ
+        // Encontrar o asteroide com a menor miss_distance
+        const closestAsteroid = hazardousAsteroids.reduce((prev, curr) => {
+            return (prev.miss_distance < curr.miss_distance) ? prev : curr;
         });
+
+        const message = JSON.stringify(closestAsteroid);
+        publishToRabbitMQ(message);  // Publica a mensagem no RabbitMQ
+        console.log("Asteroide mais próximo:", closestAsteroid);
     } else {
         console.log("Nenhum meteorito perigoso encontrado.");
     }
