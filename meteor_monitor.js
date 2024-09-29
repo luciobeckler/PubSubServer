@@ -93,7 +93,7 @@ async function monitorAsteroids() {
 }
 
 // Executa o monitoramento a cada 1 hora (3600000 ms)
-setInterval(monitorAsteroids, 10000);
+setInterval(monitorAsteroids, 20000);
 
 // Executa pela primeira vez ao iniciar o script
 monitorAsteroids();
